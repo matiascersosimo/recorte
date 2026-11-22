@@ -54,7 +54,7 @@ fn setup(app: AppHandle) -> Result<Setup, String> {
         arch: std::env::consts::ARCH,
         logical_cores,
         threads: logical_cores.min(4),
-        recommended: if memory_gib >= 12.0 && logical_cores >= 8 { "u2net" } else { "u2netp" },
+        recommended: models::recommended(memory_gib, logical_cores),
     })
 }
 
@@ -87,7 +87,7 @@ async fn process_image(app: AppHandle, state: State<'_, Workspace>, path: PathBu
     blocking(move || {
         let _guard = operation.lock().map_err(|error| error.to_string())?;
         model.verify(&model_path)?;
-        let result = inference::cutout(&model_path, inference::read(&path)?, cores().min(4))?;
+        let result = inference::cutout(&model_path, model.profile, inference::read(&path)?, cores().min(4))?;
         let preview = inference::preview(&result)?;
         let mut staged = tempfile::NamedTempFile::new().map_err(|error| error.to_string())?;
         result.write_to(staged.as_file_mut(), image::ImageFormat::Png).map_err(|error| error.to_string())?;

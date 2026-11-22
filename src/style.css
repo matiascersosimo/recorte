@@ -37,10 +37,11 @@ figcaption { color: #cccde0; padding: 3px 0 9px; font-size: .8rem; font-weight: 
 .checker span { color: #b9bbce; font-size: .8rem; text-align: center; }
 #status { margin: 0; }
 .error { color: #ffb2bc; }
-.model { padding: 13px 0; border-bottom: 1px solid #363848; }
-.model label { display: flex; gap: 8px; align-items: center; font-size: .89rem; }
+.model { padding: 10px 0; border-bottom: 1px solid #363848; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
+.model label { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; font-size: .89rem; }
 .model input { margin: 0; accent-color: #c3b6ff; }
-.model button { margin-top: 9px; min-height: 30px; }
+.model p:first-of-type { grid-column: 1 / -1; }
+.model button { margin-top: 6px; padding-inline: 8px; min-height: 30px; }
 .hardware { margin-top: 23px; }
 .hint { color: #a6a9c1; line-height: 1.5; }
 @media (max-width: 950px) {

@@ -67,6 +67,8 @@ function renderCatalog() {
     label.append(radio, name);
     const details = document.createElement("p");
     details.textContent = `${(model.bytes / 1e6).toLocaleString("es", { maximumFractionDigits: 1 })} MB · ${model.installed ? "Instalado" : "Disponible"}`;
+    const quality = document.createElement("p");
+    quality.textContent = model.detail;
     const action = document.createElement("button");
     action.className = "secondary";
     action.textContent = model.installed ? "Eliminar" : "Descargar";
@@ -77,7 +79,7 @@ function renderCatalog() {
       await loadCatalog();
       status(model.installed ? "Modelo eliminado." : "Modelo instalado. Ya podés usarlo sin conexión.");
     }));
-    card.append(label, details, action);
+    card.append(label, quality, details, action);
     ui.models.append(card);
   }
   updateControls();
@@ -85,11 +87,13 @@ function renderCatalog() {
 
 async function loadCatalog() {
   configuration = await invoke("setup");
-  selected ??= configuration.recommended;
-  const { memoryGib, logicalCores, threads, arch, recommended } = configuration;
+  const suggested = configuration.models.find((model) => model.id === configuration.recommended);
+  selected ??= suggested.installed
+    ? suggested.id
+    : configuration.models.find((model) => model.installed)?.id ?? suggested.id;
+  const { memoryGib, logicalCores, threads, arch } = configuration;
   ui.hardware.textContent = `${memoryGib.toFixed(1)} GiB de RAM · ${logicalCores} núcleos lógicos · ${arch}`;
-  const modelName = configuration.models.find((model) => model.id === recommended).name;
-  ui.recommendation.textContent = `${modelName} sugerido. Procesamiento por CPU con hasta ${threads} hilos.`;
+  ui.recommendation.textContent = `${suggested.name} sugerido. Procesamiento por CPU con hasta ${threads} hilos.`;
   renderCatalog();
 }
 
