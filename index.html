@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recorte</title>
+</head>
+<body>
+  <header><strong>Recorte</strong><span>Quitafondos local</span></header>
+  <main>
+    <section class="studio" aria-labelledby="title">
+      <div class="toolbar">
+        <div><h1 id="title">Quitar fondo</h1><p id="filename">PNG, JPG o WebP</p></div>
+        <button id="open" class="secondary">Abrir imagen</button>
+      </div>
+      <div id="drop" class="drop">
+        <div class="empty" id="empty">
+          <div class="arrow" aria-hidden="true">↓</div>
+          <strong>Arrastrá una imagen acá</strong>
+          <p>O elegila desde tu equipo</p>
+        </div>
+        <div id="comparison" class="comparison" hidden>
+          <figure><figcaption>Antes</figcaption><div class="frame"><img id="before" alt="Imagen original"></div></figure>
+          <figure><figcaption>Después</figcaption><div class="frame checker"><img id="after" alt="Imagen sin fondo" hidden><span id="placeholder">Acá aparece el recorte</span></div></figure>
+        </div>
+      </div>
+      <div class="actions">
+        <p id="status" role="status" aria-live="polite"></p>
+        <div><button id="run" disabled>Quitar fondo</button><button id="save" class="secondary" disabled>Exportar PNG</button></div>
+      </div>
+    </section>
+    <aside aria-labelledby="model-title">
+      <h2 id="model-title">Modelos</h2>
+      <p class="hint">Elegí el modelo que querés usar.</p>
+      <div id="models"></div>
+      <section class="hardware">
+        <h2>Tu equipo</h2>
+        <p id="hardware">Detectando hardware…</p>
+        <p id="recommendation" class="hint"></p>
+      </section>
+    </aside>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
