@@ -28,7 +28,7 @@ pub fn preview(image: &DynamicImage) -> Result<String, String> {
     Ok(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png.into_inner())))
 }
 
-pub fn cutout(model: &Path, profile: Profile, image: DynamicImage, threads: usize) -> Result<DynamicImage, String> {
+pub fn cutout(model: &Path, profile: Profile, image: DynamicImage, threads: usize, mut stage: impl FnMut(&'static str)) -> Result<DynamicImage, String> {
     let side = match profile {
         Profile::U2Net => 320usize,
         Profile::IsNet | Profile::BiRefNet => 1024,
@@ -55,6 +55,7 @@ pub fn cutout(model: &Path, profile: Profile, image: DynamicImage, threads: usiz
         let options = RunOptions::new().map_err(message)?
             .with_outputs(OutputSelector::no_default().with(primary));
         let tensor = Tensor::from_array(([1, 3, side, side], input)).map_err(message)?;
+        stage("mask");
         let outputs = session.run_with_options(ort::inputs![tensor], &options).map_err(message)?;
         let (shape, scores) = outputs[0].try_extract_tensor::<f32>().map_err(message)?;
         if shape[..] != [1, 1, side as i64, side as i64] || scores.iter().any(|v| !v.is_finite()) {
@@ -72,6 +73,7 @@ pub fn cutout(model: &Path, profile: Profile, image: DynamicImage, threads: usiz
         let alpha = scores.iter().map(|&score| ((probability(score) - min) / (max - min) * 255.0).round() as u8).collect();
         GrayImage::from_raw(side as u32, side as u32, alpha).ok_or("Máscara inválida.")?
     };
+    stage("compose");
     let mut result = image.into_rgba8();
     let mask = image::imageops::resize(&mask, result.width(), result.height(), FilterType::Triangle);
     for (pixel, alpha) in result.pixels_mut().zip(mask.pixels()) {
@@ -99,7 +101,7 @@ mod tests {
             let path = model.path(Path::new(&dir));
             model.verify(&path).unwrap();
             let start = std::time::Instant::now();
-            let result = cutout(&path, model.profile, source.clone(), 4).unwrap().into_rgba8();
+            let result = cutout(&path, model.profile, source.clone(), 4, |_| {}).unwrap().into_rgba8();
             assert_eq!(result.dimensions(), (source.width(), source.height()), "{}", model.id);
             assert!(result.pixels().any(|pixel| pixel[3] < 16), "{}", model.id);
             assert!(result.pixels().any(|pixel| pixel[3] > 240), "{}", model.id);

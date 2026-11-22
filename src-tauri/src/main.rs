@@ -5,7 +5,7 @@ mod models;
 
 use serde::Serialize;
 use std::{path::PathBuf, sync::{Arc, Mutex}};
-use tauri::{AppHandle, Manager, State};
+use tauri::{ipc::Channel, AppHandle, Manager, State};
 
 #[derive(Default)]
 struct Workspace {
@@ -63,13 +63,17 @@ async fn blocking<T: Send + 'static>(task: impl FnOnce() -> Result<T, String> + 
 }
 
 #[tauri::command]
-async fn manage_model(app: AppHandle, state: State<'_, Workspace>, id: String, install: bool) -> Result<(), String> {
+async fn manage_model(app: AppHandle, state: State<'_, Workspace>, id: String, install: bool, progress: Channel<u64>) -> Result<(), String> {
     let dir = model_dir(&app)?;
     let model = models::get(&id)?;
     let operation = state.operation.clone();
     blocking(move || {
         let _guard = operation.lock().map_err(|error| error.to_string())?;
-        if install { model.install(&dir) } else { model.remove(&dir) }
+        if install {
+            model.install(&dir, |bytes| { let _ = progress.send(bytes); })
+        } else {
+            model.remove(&dir)
+        }
     }).await
 }
 
@@ -79,7 +83,7 @@ async fn preview_image(path: PathBuf) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn process_image(app: AppHandle, state: State<'_, Workspace>, path: PathBuf, id: String) -> Result<String, String> {
+async fn process_image(app: AppHandle, state: State<'_, Workspace>, path: PathBuf, id: String, progress: Channel<&'static str>) -> Result<String, String> {
     let model = models::get(&id)?;
     let model_path = model.path(&model_dir(&app)?);
     let operation = state.operation.clone();
@@ -87,7 +91,9 @@ async fn process_image(app: AppHandle, state: State<'_, Workspace>, path: PathBu
     blocking(move || {
         let _guard = operation.lock().map_err(|error| error.to_string())?;
         model.verify(&model_path)?;
-        let result = inference::cutout(&model_path, model.profile, inference::read(&path)?, cores().min(4))?;
+        let result = inference::cutout(&model_path, model.profile, inference::read(&path)?, cores().min(4), |stage| {
+            let _ = progress.send(stage);
+        })?;
         let preview = inference::preview(&result)?;
         let mut staged = tempfile::NamedTempFile::new().map_err(|error| error.to_string())?;
         result.write_to(staged.as_file_mut(), image::ImageFormat::Png).map_err(|error| error.to_string())?;

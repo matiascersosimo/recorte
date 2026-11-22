@@ -107,7 +107,7 @@ impl Model {
         Ok(())
     }
 
-    pub fn install(self, dir: &Path) -> Result<(), String> {
+    pub fn install(self, dir: &Path, mut progress: impl FnMut(u64)) -> Result<(), String> {
         let path = self.path(dir);
         if self.installed(dir) && self.verify(&path).is_ok() {
             return Ok(());
@@ -120,7 +120,23 @@ impl Model {
             .build().map_err(message)?;
         let url = format!("https://github.com/danielgatis/rembg/releases/download/v0.0.0/{}", self.asset);
         let response = client.get(url).send().and_then(|r| r.error_for_status()).map_err(message)?;
-        let written = std::io::copy(&mut response.take(self.bytes + 1), staged.as_file_mut()).map_err(message)?;
+        let mut response = response.take(self.bytes + 1);
+        let mut buffer = [0; 64 * 1024];
+        let mut written = 0;
+        let mut last_percent = 0;
+        loop {
+            let count = response.read(&mut buffer).map_err(message)?;
+            if count == 0 {
+                break;
+            }
+            staged.as_file_mut().write_all(&buffer[..count]).map_err(message)?;
+            written += count as u64;
+            let percent = written * 100 / self.bytes;
+            if percent > last_percent {
+                progress(written.min(self.bytes));
+                last_percent = percent;
+            }
+        }
         if written != self.bytes {
             return Err("La descarga tiene un tamaño inesperado.".into());
         }
