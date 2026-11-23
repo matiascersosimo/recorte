@@ -9,12 +9,23 @@ use std::{
 
 #[derive(Clone, Copy, Serialize)]
 pub struct Model {
-    pub id: &'static str,
     pub name: &'static str,
-    pub bytes: u64,
     pub detail: &'static str,
     #[serde(skip)]
     pub profile: Profile,
+    #[serde(flatten)]
+    file: ModelFile,
+}
+
+impl std::ops::Deref for Model {
+    type Target = ModelFile;
+    fn deref(&self) -> &ModelFile { &self.file }
+}
+
+#[derive(Clone, Copy, Serialize)]
+pub struct ModelFile {
+    pub id: &'static str,
+    pub bytes: u64,
     #[serde(skip)]
     asset: &'static str,
     #[serde(skip)]
@@ -28,42 +39,64 @@ pub enum Profile {
     BiRefNet,
 }
 
+// These files form a single user-visible model. Keep them outside the automatic catalog.
+pub const SAM_FILES: [ModelFile; 2] = [
+    ModelFile {
+        id: "mobile_sam_image_encoder", bytes: 28_157_093,
+        asset: "https://huggingface.co/t9749/mobilesam-onnx/resolve/5c378f4561c10ef3af2c798cac4447b9adc62e63/mobile_sam_image_encoder.onnx",
+        checksum: "580f5fb648ea1062c0aabc26217aed56921985f03f0cbbd852bba81d760cc749",
+    },
+    ModelFile {
+        id: "sam_mask_decoder_single", bytes: 16_501_323,
+        asset: "https://huggingface.co/t9749/mobilesam-onnx/resolve/5c378f4561c10ef3af2c798cac4447b9adc62e63/sam_mask_decoder_single.onnx",
+        checksum: "93915fc7c993ab9d59ab8c9ccd3bce37f7509c81ab4150a74abd4d2abbd8570d",
+    },
+];
+
 pub const MODELS: [Model; 4] = [
     Model {
-        id: "u2netp",
         name: "U²-Net ligero",
-        bytes: 4_574_861,
         detail: "Rápido · 320 × 320",
         profile: Profile::U2Net,
-        asset: "u2netp.onnx",
-        checksum: "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8",
+        file: ModelFile {
+            id: "u2netp",
+            bytes: 4_574_861,
+            asset: "u2netp.onnx",
+            checksum: "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8",
+        },
     },
     Model {
-        id: "u2net",
         name: "U²-Net completo",
-        bytes: 175_997_641,
         detail: "General · 320 × 320",
         profile: Profile::U2Net,
-        asset: "u2net.onnx",
-        checksum: "8d10d2f3bb75ae3b6d527c77944fc5e7dcd94b29809d47a739a7a728a912b491",
+        file: ModelFile {
+            id: "u2net",
+            bytes: 175_997_641,
+            asset: "u2net.onnx",
+            checksum: "8d10d2f3bb75ae3b6d527c77944fc5e7dcd94b29809d47a739a7a728a912b491",
+        },
     },
     Model {
-        id: "isnet-general-use",
         name: "IS-Net",
-        bytes: 178_648_008,
         detail: "Alta fidelidad · 1024 × 1024",
         profile: Profile::IsNet,
-        asset: "isnet-general-use.onnx",
-        checksum: "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
+        file: ModelFile {
+            id: "isnet-general-use",
+            bytes: 178_648_008,
+            asset: "isnet-general-use.onnx",
+            checksum: "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
+        },
     },
     Model {
-        id: "birefnet-lite",
         name: "BiRefNet Lite",
-        bytes: 224_005_088,
         detail: "Alta fidelidad · 1024 × 1024 · Mayor carga",
         profile: Profile::BiRefNet,
-        asset: "BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx",
-        checksum: "5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333",
+        file: ModelFile {
+            id: "birefnet-lite",
+            bytes: 224_005_088,
+            asset: "BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx",
+            checksum: "5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333",
+        },
     },
 ];
 
@@ -81,7 +114,7 @@ pub fn get(id: &str) -> Result<Model, String> {
     MODELS.iter().copied().find(|m| m.id == id).ok_or_else(|| "Modelo desconocido.".into())
 }
 
-impl Model {
+impl ModelFile {
     pub fn path(self, dir: &Path) -> std::path::PathBuf {
         dir.join(format!("{}.onnx", self.id))
     }
@@ -118,7 +151,9 @@ impl Model {
             .connect_timeout(Duration::from_secs(15))
             .timeout(Duration::from_secs(1_800))
             .build().map_err(message)?;
-        let url = format!("https://github.com/danielgatis/rembg/releases/download/v0.0.0/{}", self.asset);
+        let url = if self.asset.starts_with("https://") { self.asset.to_owned() } else {
+            format!("https://github.com/danielgatis/rembg/releases/download/v0.0.0/{}", self.asset)
+        };
         let response = client.get(url).send().and_then(|r| r.error_for_status()).map_err(message)?;
         let mut response = response.take(self.bytes + 1);
         let mut buffer = [0; 64 * 1024];

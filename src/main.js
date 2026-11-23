@@ -23,6 +23,94 @@ let selected;
 let source;
 let result = false;
 let busy = false;
+let interactive = false;
+let include = true;
+let points = [];
+const surface = byId("point-surface");
+
+function photoRect() {
+  const rect = ui.before.getBoundingClientRect();
+  const scale = Math.min(rect.width / ui.before.naturalWidth, rect.height / ui.before.naturalHeight);
+  const width = ui.before.naturalWidth * scale;
+  const height = ui.before.naturalHeight * scale;
+  return {width, height, left: (rect.width - width) / 2, top: (rect.height - height) / 2};
+}
+
+function drawPoints() {
+  surface.replaceChildren();
+  if (!points.length) return;
+  const rect = photoRect();
+  for (const point of points) {
+    const marker = document.createElement("span");
+    marker.className = point.include ? "point-marker" : "point-marker negative";
+    marker.textContent = point.include ? "+" : "−";
+    marker.style.left = (rect.left + point.x * rect.width) + "px";
+    marker.style.top = (rect.top + point.y * rect.height) + "px";
+    surface.append(marker);
+  }
+}
+new ResizeObserver(drawPoints).observe(ui.comparison);
+
+function resetPoints() {
+  points = [];
+  include = true;
+  result = false;
+  comparisonMode(false);
+  drawPoints();
+}
+
+function setMode(next) {
+  if (busy || next === interactive) return;
+  void perform("", async () => {
+    await invoke("clear_selection");
+    interactive = next;
+    resetPoints();
+    status(next ? "Marcá el objeto que querés conservar." : "");
+  });
+}
+byId("automatic").onclick = () => setMode(false);
+byId("interactive").onclick = () => setMode(true);
+byId("include").onclick = () => { include = true; updateControls(); };
+byId("exclude").onclick = () => { include = false; updateControls(); };
+
+function applyPoints(next) {
+  void perform("", async () => {
+    points = next;
+    drawPoints();
+    result = false;
+    comparisonMode(false);
+    if (!points.length) { include = true; return; }
+    showProgress("Actualizando la selección…");
+    ui.after.src = await invoke("select_object", {path: source, points});
+    await ui.after.decode();
+    ui.layer.hidden = false;
+    result = true;
+    status("Agregá puntos para ajustar la selección o exportá el PNG.");
+  });
+}
+surface.onclick = (event) => {
+  if (busy || !source || !interactive || !configuration?.samInstalled) return;
+  const rect = photoRect();
+  const bounds = surface.getBoundingClientRect();
+  const x = (event.clientX - bounds.left - rect.left) / rect.width;
+  const y = (event.clientY - bounds.top - rect.top) / rect.height;
+  if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) return;
+  if (points.length >= 128) { status("Alcanzaste el límite de 128 puntos."); return; }
+  applyPoints([...points, {x, y, include}]);
+};
+byId("undo").onclick = () => applyPoints(points.slice(0, -1));
+byId("sam-install").onclick = () => perform("", async () => {
+  const install = !configuration.samInstalled;
+  const progress = new Channel();
+  if (install) {
+    showProgress("Descargando MobileSAM…", 0);
+    progress.onmessage = bytes => showProgress("Descargando MobileSAM…", Math.floor(100*bytes/configuration.samBytes));
+  }
+  await invoke("manage_model", {id:"mobilesam",install,progress});
+  resetPoints();
+  await loadCatalog();
+  status(install ? "MobileSAM listo. Marcá el objeto en la foto." : "MobileSAM eliminado.");
+});
 
 function comparisonMode(visible) {
   for (const element of [ui.layer, ui.divider, ui.split, ui.rightTag]) element.hidden = !visible;
@@ -52,6 +140,23 @@ function showProgress(label, percent) {
 }
 
 function updateControls() {
+  for (const [id, pressed] of [["automatic",!interactive],["interactive",interactive],["include",include],["exclude",!include]]) {
+    byId(id).setAttribute("aria-pressed", String(pressed));
+    byId(id).disabled = busy || !desktop;
+  }
+  byId("exclude").disabled ||= !points.length;
+  byId("undo").disabled = busy || !points.length;
+  byId("point-tools").hidden = !interactive;
+  byId("sam-card").hidden = !interactive;
+  ui.models.hidden = interactive;
+  ui.recommendation.hidden = interactive;
+  ui.run.hidden = interactive;
+  ui.comparison.classList.toggle("marking", interactive);
+  surface.hidden = !interactive || !source || !configuration?.samInstalled;
+  if (interactive) ui.leftTag.textContent = "Selección por puntos";
+  else if (!busy) ui.leftTag.textContent = "Original";
+  byId("sam-install").textContent = configuration?.samInstalled ? "Eliminar" : "Descargar";
+  byId("sam-install").disabled = busy || !desktop;
   ui.open.disabled = busy || !desktop;
   ui.run.disabled = busy || !source || !configuration?.models.find((model) => model.id === selected)?.installed;
   ui.save.disabled = busy || !result;
@@ -142,6 +247,8 @@ function filename(path) {
 
 async function loadImage(path) {
   const preview = await invoke("preview_image", { path });
+  await invoke("clear_selection");
+  resetPoints();
   source = path;
   result = false;
   ui.before.src = preview;
@@ -150,7 +257,7 @@ async function loadImage(path) {
   ui.filename.textContent = filename(path);
   ui.empty.hidden = true;
   ui.comparison.hidden = false;
-  status("");
+  status(interactive ? "Marcá el objeto que querés conservar." : "");
 }
 
 ui.open.addEventListener("click", () => perform("", async () => {
@@ -194,7 +301,7 @@ ui.save.addEventListener("click", () => perform("", async () => {
   const path = await save({ defaultPath: `${stem}-sin-fondo.png`, filters: [{ name: "PNG", extensions: ["png"] }] });
   if (!path) return;
   const destination = /\.png$/i.test(path) ? path : `${path}.png`;
-  await invoke("export_image", { path: destination });
+  await invoke("export_image", { path: destination, interactive });
   status(`Guardado en ${destination}`);
 }));
 

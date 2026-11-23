@@ -6,6 +6,15 @@
 <main>
 <section class="studio" aria-labelledby="title">
   <div class="toolbar"><div><h1 id="title">Mesa de recorte</h1><p id="filename">PNG, JPG o WebP</p></div><button id="open" class="secondary">Abrir imagen <b aria-hidden="true">↗</b></button></div>
+  <div class="modebar" aria-label="Modo de recorte">
+    <button id="automatic" aria-pressed="true">Automático</button>
+    <button id="interactive" aria-pressed="false">Seleccionar objeto</button>
+  </div>
+  <div id="point-tools" class="modebar" hidden>
+    <button id="include" aria-pressed="true">＋ Incluir</button>
+    <button id="exclude" aria-pressed="false">− Excluir</button>
+    <button id="undo">Deshacer punto</button>
+  </div>
   <div id="drop" class="drop">
     <div id="empty" class="empty">
       <div class="print" aria-hidden="true"><img src="/src/assets/astronaut.webp" alt=""></div>
@@ -17,10 +26,11 @@
       <span class="tag left" id="left-tag">Original</span><span class="tag right" id="right-tag" hidden>Recorte</span>
       <div class="divider" id="divider" hidden><span>‹ ›</span></div>
       <input id="split" hidden type="range" min="0" max="100" value="50" aria-label="Comparar original y recorte">
+      <div id="point-surface" aria-label="Marcar puntos sobre la foto" hidden></div>
     </div>
   </div>
   <div id="progress-panel" class="progress-panel" hidden><div><span id="progress-label"></span><span id="progress-value"></span></div><progress id="progress" aria-labelledby="progress-label" max="100"></progress></div>
   <div class="actions"><p id="status" role="status" aria-live="polite"></p><div><button id="run" disabled>Quitar fondo</button><button id="save" class="secondary" disabled>Exportar PNG <b aria-hidden="true">↓</b></button></div></div>
 </section>
-<aside aria-labelledby="model-title"><h2 id="model-title">Modelo de recorte</h2><div id="models"></div><section class="hardware"><h2>Tu equipo</h2><p id="hardware">Detectando hardware…</p><p id="recommendation"></p></section></aside>
+<aside aria-labelledby="model-title"><h2 id="model-title">Modelo de recorte</h2><div id="models"></div><section id="sam-card" class="model" hidden><strong>MobileSAM</strong><p>Selección por puntos · 44,7 MB</p><button id="sam-install" class="secondary">Descargar</button></section><section class="hardware"><h2>Tu equipo</h2><p id="hardware">Detectando hardware…</p><p id="recommendation"></p></section></aside>
 </main><script type="module" src="/src/main.js"></script></body></html>

@@ -41,3 +41,12 @@ aside{border-left:1px solid var(--line);padding:7px 0 0 22px}
 .hardware{border-top:1px solid var(--line);padding-top:13px}.hardware h2{font-size:14px}.hardware p{margin-top:5px}
 @media(max-width:930px){main{padding:20px;gap:18px;grid-template-columns:minmax(0,1fr) 215px}aside{padding-left:14px}.toolbar button{padding:0 9px}}
 @media(max-height:670px){main{padding-top:14px}.drop{height:51vh;min-height:260px}}
+.modebar{display:flex;gap:5px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
+.modebar button{background:var(--paper);border-color:var(--line);min-height:31px}
+.modebar button[aria-pressed=true]{background:var(--ink);color:white}
+#point-surface{position:absolute;inset:0;cursor:crosshair;touch-action:manipulation}
+.point-marker{position:absolute;transform:translate(-50%,-50%);border:2px solid white;border-radius:50%;background:#176950;color:white;width:21px;height:21px;display:grid;place-items:center;font:bold 14px/1 sans-serif;box-shadow:0 1px 5px #0009;pointer-events:none}
+.point-marker.negative{background:#ad392b}
+.comparison.marking #output-layer{clip-path:none;background:transparent}
+.comparison.marking:has(#output-layer:not([hidden])) #before{opacity:.32}
+#sam-card{margin:14px 0}

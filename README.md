@@ -2,6 +2,18 @@
 
 MVP de escritorio para quitar el fondo de una imagen en Windows x64. Acepta PNG, JPEG y WebP, muestra el antes y el después y exporta PNG con transparencia a la resolución de la imagen original. Se procesa una imagen por vez.
 
+## Ejecutable actual
+
+En la carpeta de trabajo se mantiene un único ejecutable de entrega, `outputs/Recorte.exe`. Corresponde a la última compilación publicada e incluye la selección por puntos con MobileSAM. El historial del código se conserva en Git.
+
+Después de compilar, actualizá ese archivo con `scripts/update-executable.ps1 -BinaryPath <ruta-al-ejecutable-compilado>`. Las siguientes entregas reemplazan el mismo archivo. El script local `work/build-recorte.ps1` lo actualiza automáticamente al terminar una compilación correcta.
+
+## Seleccionar un objeto
+
+Abrí una foto y elegí **Seleccionar objeto**. La primera vez, descargá **MobileSAM** desde el panel lateral (44,7 MB). Con **Incluir (+)**, hacé clic dentro del objeto. Usá **Excluir (−)** sobre una zona que quieras retirar o **Deshacer punto** para corregir el último clic. La vista previa atenúa el resto de la foto. **Exportar PNG** guarda la selección con transparencia a la resolución original.
+
+MobileSAM procesa la foto en CPU y reutiliza su representación en memoria para los siguientes puntos. Los dos archivos ONNX se descargan bajo demanda y se verifican con SHA-256. [Modelo MobileSAM](https://github.com/ChaoningZhang/MobileSAM) · [Exportación ONNX utilizada](https://huggingface.co/t9749/mobilesam-onnx/tree/5c378f4561c10ef3af2c798cac4447b9adc62e63)
+
 ## Desarrollo en Windows
 
 Instalá Node.js compatible con Vite 7, Rust estable con el destino MSVC, Microsoft C++ Build Tools con el SDK de Windows y WebView2. Los requisitos y enlaces de instalación están en la [documentación de Tauri 2](https://v2.tauri.app/start/prerequisites/).
